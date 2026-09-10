@@ -8,7 +8,9 @@ Code reads for project context). See `docs/phase-roadmap.md` for the release
 plan and `docs/db-schema-outline.md` for the starting schema.
 
 Stack: PHP 8.3 (strict types, OOP-only, no framework, no ORM), PDO/MySQL,
-JWT auth, Stripe billing, Coolify deploy — same conventions as StrikeCircle.
+JWT auth, Stripe billing. Deploys to self-managed hosting (cPanel or
+CyberPanel) — no PaaS, no Docker in production.
 
 ## Status
-Phase 1 (Core) — not started.
+Phase 1 (Core) — built, pushed to `main`. Phase 2 (Find + Write + Publish)
+in progress on `release/v2-content-engine`.

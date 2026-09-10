@@ -2,6 +2,15 @@
 
 Log new decisions at the top, dated.
 
+## 2026-09-10 — Deploy target: self-managed hosting, not Coolify
+Reversed the earlier "Coolify, same as StrikeCircle" call. Steve will
+deploy this one himself on cPanel or CyberPanel instead — no PaaS. Removed
+Docker/Coolify assumptions from CLAUDE.md and env defaults (`DB_HOST`
+default changed from the Docker-compose service name `db` to `localhost`).
+No app-code impact: `app/config/env.php`'s loader and PDO `Database`
+factory were already environment-agnostic, this only touched defaults and
+docs.
+
 ## 2026-09-10 — Competitor data: no SERP scraping, no DataForSEO
 Researched how DataForSEO sources data: proxy-rotated scraping of live
 Google/Bing SERPs, parsed into structured JSON. This violates Google's ToS

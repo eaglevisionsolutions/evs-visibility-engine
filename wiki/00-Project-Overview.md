@@ -2,7 +2,7 @@
 
 **Codename:** visibility-engine (public brand name not yet decided — see
 Architecture Decisions log)
-**Repo:** github.com/[your-account]/evs-visibility-engine
+**Repo:** github.com/eaglevisionsolutions/evs-visibility-engine
 **Local path:** ~/Projects/evs-visibility-engine
 **Started:** 2026-09-10
 
@@ -19,8 +19,9 @@ Content Ops pipeline for EVS clients, and to be resold externally.
 4. AEO — ChatGPT/Gemini/Claude citation tracking, gaps feed the same backlog
 
 ## Stack
-PHP 8.3 (strict, OOP-only, no framework/ORM), PDO/MySQL, JWT auth, Stripe,
-Coolify — mirrors [[StrikeCircle]] conventions.
+PHP 8.3 (strict, OOP-only, no framework/ORM), PDO/MySQL, JWT auth, Stripe.
+Deploys to self-managed hosting (cPanel or CyberPanel), not a PaaS —
+[[StrikeCircle]] conventions minus the Coolify/Docker assumptions.
 
 ## Links
 - [[01-Architecture-Decisions]]

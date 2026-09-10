@@ -23,7 +23,7 @@ final class Database
 
     private static function connect(): PDO
     {
-        $host = env('DB_HOST', 'db');
+        $host = env('DB_HOST', 'localhost');
         $port = env('DB_PORT', '3306');
         $database = env('DB_DATABASE', 'visibility_engine');
         $username = env('DB_USERNAME', 'root');

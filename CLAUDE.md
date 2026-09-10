@@ -28,8 +28,12 @@ single config constant, not something scattered through the codebase.
   Both web entry points and CLI/migration scripts depend on this loader.
 - Migrations are plain PHP files in `/migrations`, run via CLI, no migration
   framework.
-- Deploy target: Coolify, same as StrikeCircle. Local dev in Docker
-  (`dev_php83` container pattern), local DB host `db`.
+- Deploy target: self-managed hosting (cPanel or CyberPanel) — the user
+  deploys manually, not via a PaaS. No Docker/Coolify assumptions anywhere
+  in the app (paths, env defaults, deploy scripts): it must run as plain
+  PHP-FPM/Apache under a standard shared-hosting or VPS-with-control-panel
+  layout. Local dev also runs without Docker — PHP 8.3 + Composer installed
+  natively, `php -S` for local serving, DB host defaults to `localhost`.
 
 ## Multi-tenancy model
 
