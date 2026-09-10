@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Support\Crypto;
 use InvalidArgumentException;
 use PDO;
 
@@ -30,6 +31,9 @@ abstract class BaseModel
 
     /** @var list<string> Columns allowed in insert()/update() data arrays. */
     protected array $fillable = [];
+
+    /** @var list<string> Fillable columns that are encrypted at rest (see Support/Crypto). */
+    protected array $encrypted = [];
 
     public function __construct(
         protected readonly int $accountId,
@@ -58,7 +62,7 @@ abstract class BaseModel
 
         $row = $stmt->fetch();
 
-        return $row === false ? null : $row;
+        return $row === false ? null : $this->decryptRow($row);
     }
 
     /**
@@ -72,7 +76,7 @@ abstract class BaseModel
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$whereSql}");
         $stmt->execute($params);
 
-        return $stmt->fetchAll();
+        return array_map($this->decryptRow(...), $stmt->fetchAll());
     }
 
     /**
@@ -80,7 +84,7 @@ abstract class BaseModel
      */
     public function create(array $data): int
     {
-        $data = $this->filterFillable($data);
+        $data = $this->encryptRow($this->filterFillable($data));
         $data[$this->tenantColumn] = $this->accountId;
 
         $columns = array_keys($data);
@@ -104,7 +108,7 @@ abstract class BaseModel
      */
     public function update(int $id, array $data): bool
     {
-        $data = $this->filterFillable($data);
+        $data = $this->encryptRow($this->filterFillable($data));
 
         if ($data === []) {
             return false;
@@ -140,6 +144,36 @@ abstract class BaseModel
         }
 
         return array_intersect_key($data, array_flip($this->fillable));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function encryptRow(array $data): array
+    {
+        foreach ($this->encrypted as $column) {
+            if (isset($data[$column]) && $data[$column] !== '') {
+                $data[$column] = Crypto::encrypt((string) $data[$column]);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function decryptRow(array $row): array
+    {
+        foreach ($this->encrypted as $column) {
+            if (!empty($row[$column])) {
+                $row[$column] = Crypto::decrypt((string) $row[$column]) ?? $row[$column];
+            }
+        }
+
+        return $row;
     }
 
     /**

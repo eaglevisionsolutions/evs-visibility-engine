@@ -3,8 +3,10 @@
 ## Core / tenancy
 - `accounts` (id, name, plan_key, stripe_customer_id, created_at)
 - `users` (id, account_id, email, password_hash, role, created_at)
-- `sites` (id, account_id, domain, wp_url, wp_app_password, gsc_property,
-  ga4_property_id, created_at)
+- `sites` (id, account_id, domain, wp_url, wp_username, wp_app_password,
+  gsc_property, gsc_refresh_token, gsc_connected_at, ga4_property_id,
+  created_at). `wp_app_password` and `gsc_refresh_token` are encrypted at
+  rest (`App\Support\Crypto`, `APP_KEY` env) — added in Phase 2.
 
 ## Billing
 - `plans` (plan_key PK, stripe_price_id, site_limit, competitor_limit,

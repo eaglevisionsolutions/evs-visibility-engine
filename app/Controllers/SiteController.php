@@ -38,7 +38,9 @@ final class SiteController
                 $request->accountId(),
                 $account['plan_key'],
                 $body['domain'],
-                array_intersect_key($body, array_flip(['wp_url', 'wp_app_password', 'gsc_property', 'ga4_property_id'])),
+                array_intersect_key($body, array_flip([
+                    'wp_url', 'wp_username', 'wp_app_password', 'gsc_property', 'ga4_property_id',
+                ])),
             );
         } catch (RuntimeException $e) {
             return Response::error($e->getMessage(), 422);

@@ -12,6 +12,8 @@ declare(strict_types=1);
 use App\Controllers\AccountController;
 use App\Controllers\AuthController;
 use App\Controllers\BillingController;
+use App\Controllers\ContentQueueController;
+use App\Controllers\GscOAuthController;
 use App\Controllers\SiteController;
 use App\Controllers\StripeWebhookController;
 use App\Core\Middleware\JwtAuthMiddleware;
@@ -22,6 +24,7 @@ use App\Models\Plan;
 use App\Services\AccountService;
 use App\Services\AuthService;
 use App\Services\Billing\StripeBillingProvider;
+use App\Services\Gsc\GoogleOAuthService;
 use App\Services\SiteService;
 use App\Support\Jwt;
 use Stripe\StripeClient;
@@ -46,12 +49,23 @@ return function (): Router {
         (string) env('APP_URL'),
     );
 
+    $oauth = new GoogleOAuthService(
+        $jwt,
+        (string) env('GOOGLE_CLIENT_ID'),
+        (string) env('GOOGLE_CLIENT_SECRET'),
+        (string) env('GOOGLE_REDIRECT_URI'),
+    );
+
+    $jobModel = new Job();
+
     $controllers = [
         'auth' => new AuthController($authService),
         'account' => new AccountController(new AccountService($accountModel)),
         'site' => new SiteController(new SiteService($planModel), new AccountService($accountModel)),
         'billing' => new BillingController($billing),
-        'stripeWebhook' => new StripeWebhookController($billing, new Job()),
+        'stripeWebhook' => new StripeWebhookController($billing, $jobModel),
+        'gscOAuth' => new GscOAuthController($oauth, $jobModel),
+        'contentQueue' => new ContentQueueController($jobModel),
     ];
 
     $router = new Router(new JwtAuthMiddleware($jwt));
