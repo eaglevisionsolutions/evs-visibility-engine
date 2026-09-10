@@ -3,12 +3,17 @@
 declare(strict_types=1);
 
 /**
- * Long-running CLI worker: polls the `jobs` table and dispatches by type.
- * Run via supervisor (or cron + lock file) on the VPS — see CLAUDE.md.
- * The dispatcher is a plain match expression, not a handler-class-per-type
- * abstraction — that's premature with one real job type and one no-op.
+ * Short-lived CLI batch worker, not a long-running daemon — cPanel/
+ * CyberPanel hosting generally can't guarantee a supervised background
+ * process stays up, so cron drives this instead (e.g. every minute).
+ * Each run claims and processes up to WORKER_BATCH_SIZE pending jobs, then
+ * exits. A file lock stops two cron-triggered runs from overlapping if a
+ * batch takes longer than the cron interval. The dispatcher is a plain
+ * match expression, not a handler-class-per-type abstraction — that's
+ * premature with one real job type and one no-op.
  *
  * Usage: php workers/worker.php
+ * Cron:  * * * * * php /path/to/workers/worker.php >> /path/to/storage/worker.log 2>&1
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -20,25 +25,17 @@ use App\Models\Plan;
 use App\Services\Billing\StripeBillingProvider;
 use Stripe\StripeClient;
 
-$jobModel = new Job();
+$lockDir = dirname(__DIR__) . '/storage';
+if (!is_dir($lockDir)) {
+    mkdir($lockDir, 0755, recursive: true);
+}
 
-$billing = new StripeBillingProvider(
-    new StripeClient((string) env('STRIPE_SECRET_KEY')),
-    new Account(),
-    new Plan(),
-    (string) env('STRIPE_WEBHOOK_SECRET'),
-    (string) env('APP_URL'),
-);
+$lockPath = $lockDir . '/worker.lock';
+$lockHandle = fopen($lockPath, 'c');
 
-$running = true;
-
-if (extension_loaded('pcntl')) {
-    pcntl_async_signals(true);
-    $shutdown = function () use (&$running): void {
-        $running = false;
-    };
-    pcntl_signal(SIGTERM, $shutdown);
-    pcntl_signal(SIGINT, $shutdown);
+if ($lockHandle === false || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    echo "Another worker run is still in progress. Exiting.\n";
+    exit(0);
 }
 
 /**
@@ -49,7 +46,7 @@ function dispatchJob(array $job, StripeBillingProvider $billing): void
     $payload = json_decode($job['payload'], true) ?? [];
 
     match ($job['type']) {
-        // Proves the loop works end to end: claim -> dispatch -> complete,
+        // Proves the batch works end to end: claim -> dispatch -> complete,
         // with no side effects beyond that.
         'noop_test' => null,
         'sync_stripe_subscription' => $billing->syncSubscriptionForCustomer((string) $payload['stripe_customer_id']),
@@ -57,14 +54,24 @@ function dispatchJob(array $job, StripeBillingProvider $billing): void
     };
 }
 
-echo "Worker started. Polling every " . env('WORKER_POLL_INTERVAL_SECONDS', 5) . "s.\n";
+$jobModel = new Job();
 
-while ($running) {
+$billing = new StripeBillingProvider(
+    new StripeClient((string) env('STRIPE_SECRET_KEY')),
+    new Account(),
+    new Plan(),
+    (string) env('STRIPE_WEBHOOK_SECRET'),
+    (string) env('APP_URL'),
+);
+
+$batchSize = (int) env('WORKER_BATCH_SIZE', 20);
+$processed = 0;
+
+while ($processed < $batchSize) {
     $job = $jobModel->claimNext();
 
     if ($job === null) {
-        sleep((int) env('WORKER_POLL_INTERVAL_SECONDS', 5));
-        continue;
+        break;
     }
 
     echo "[{$job['id']}] running {$job['type']}\n";
@@ -77,6 +84,11 @@ while ($running) {
         $jobModel->markFailed((int) $job['id'], $e->getMessage());
         echo "[{$job['id']}] failed: {$e->getMessage()}\n";
     }
+
+    $processed++;
 }
 
-echo "Worker shutting down.\n";
+echo "Processed {$processed} job(s).\n";
+
+flock($lockHandle, LOCK_UN);
+fclose($lockHandle);

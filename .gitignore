@@ -16,5 +16,9 @@ node_modules/
 # Logs
 *.log
 
+# Worker lock file / runtime storage (directory itself is tracked via .gitkeep)
+storage/*
+!storage/.gitkeep
+
 # PWA service worker (commented out by default per standing rule)
 # sw.js

@@ -54,8 +54,13 @@ single config constant, not something scattered through the codebase.
 
 - `jobs` table: `id, type, payload JSON, status, run_after, attempts,
   last_error, created_at, updated_at`.
-- A single long-running CLI worker (`workers/worker.php`) polls `jobs` on an
-  interval, run via supervisor (or cron with a lock file) on the VPS.
+- `workers/worker.php` is a short-lived CLI batch script, not a long-running
+  daemon — cPanel/CyberPanel shared hosting generally can't guarantee a
+  supervised background process stays up. Cron invokes it on an interval
+  (e.g. every minute); each run claims and processes up to
+  `WORKER_BATCH_SIZE` pending jobs, then exits. A file lock
+  (`storage/worker.lock`) prevents overlapping runs if a batch takes longer
+  than the cron interval.
 - Job types (add as needed, keep the dispatcher a simple switch/map):
   - `crawl_competitor`
   - `sync_gsc`
